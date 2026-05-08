@@ -146,3 +146,13 @@ const (
 	PermissionRegistryEdit   Permission = "registry_edit"
 	PermissionRegistryDelete Permission = "registry_delete"
 )
+
+const (
+	/*
+		----- IDP INTEGRATION -----
+	*/
+	PermissionIDPIntegrationView   Permission = "integration_view"
+	PermissionIDPIntegrationCreate Permission = "integration_create"
+	PermissionIDPIntegrationEdit   Permission = "integration_edit"
+	PermissionIDPIntegrationDelete Permission = "integration_delete"
+)

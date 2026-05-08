@@ -30,6 +30,7 @@ const (
 	ResourceTypeGitspace       ResourceType = "GITSPACE"
 	ResourceTypeInfraProvider  ResourceType = "INFRAPROVIDER"
 	ResourceTypeRegistry       ResourceType = "REGISTRY"
+	ResourceTypeIntegration    ResourceType = "INTEGRATION"
 )
 
 func (ResourceType) Enum() []any {
@@ -54,6 +55,7 @@ var resourceTypes = sortEnum([]ResourceType{
 	ResourceTypeGitspace,
 	ResourceTypeInfraProvider,
 	ResourceTypeRegistry,
+	ResourceTypeIntegration,
 })
 
 // ParentResourceType defines the different types of parent resources.
