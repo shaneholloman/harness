@@ -46,9 +46,9 @@ type repoActivity struct {
 	RepoID      int64 `db:"repo_activity_repo_id"`
 	PrincipalID int64 `db:"repo_activity_principal_id"`
 
-	Type      string          `db:"repo_activity_type"`
-	Payload   json.RawMessage `db:"repo_activity_payload"`
-	CreatedAt int64           `db:"repo_activity_created_at"`
+	Type    string          `db:"repo_activity_type"`
+	Payload json.RawMessage `db:"repo_activity_payload"`
+	Created int64           `db:"repo_activity_created"`
 }
 
 const repoActivityColumns = `
@@ -57,7 +57,7 @@ const repoActivityColumns = `
 	,repo_activity_principal_id
 	,repo_activity_type
 	,repo_activity_payload
-	,repo_activity_created_at`
+	,repo_activity_created`
 
 func (s *RepoActivityStore) Create(ctx context.Context, activity *types.RepoActivity) error {
 	const sqlQuery = `
@@ -67,14 +67,14 @@ func (s *RepoActivityStore) Create(ctx context.Context, activity *types.RepoActi
 		,repo_activity_principal_id
 		,repo_activity_type
 		,repo_activity_payload
-		,repo_activity_created_at
+		,repo_activity_created
 	) VALUES (
 		 :repo_activity_key
 		,:repo_activity_repo_id
 		,:repo_activity_principal_id
 		,:repo_activity_type
 		,:repo_activity_payload
-		,:repo_activity_created_at
+		,:repo_activity_created
 	)
 	ON CONFLICT (repo_activity_key) DO NOTHING`
 
@@ -108,7 +108,7 @@ func (s *RepoActivityStore) List(
 		filter,
 	)
 
-	stmt = stmt.OrderBy("repo_activity_created_at ASC").
+	stmt = stmt.OrderBy("repo_activity_created ASC").
 		Offset(storedb.Offset(filter.Page, filter.Size)).
 		Limit(uint64(filter.Size)) //nolint:gosec
 
@@ -171,10 +171,10 @@ func (s *RepoActivityStore) applyRepoActivityFilter(
 	stmt = stmt.Where(squirrel.Eq{"repo_activity_repo_id": repoID})
 
 	if filter.After > 0 {
-		stmt = stmt.Where(squirrel.Gt{"repo_activity_created_at": filter.After})
+		stmt = stmt.Where(squirrel.Gt{"repo_activity_created": filter.After})
 	}
 	if filter.Before > 0 {
-		stmt = stmt.Where(squirrel.Lt{"repo_activity_created_at": filter.Before})
+		stmt = stmt.Where(squirrel.Lt{"repo_activity_created": filter.Before})
 	}
 
 	return stmt
@@ -199,7 +199,7 @@ func mapToRepoActivity(in *types.RepoActivity) (*repoActivity, error) {
 		PrincipalID: in.PrincipalID,
 		Type:        string(in.Type),
 		Payload:     data,
-		CreatedAt:   in.Timestamp,
+		Created:     in.Timestamp,
 	}
 
 	return out, nil
@@ -221,7 +221,7 @@ func mapFromRepoActivity(in *repoActivity) (*types.RepoActivity, error) {
 		RepoID:      in.RepoID,
 		PrincipalID: in.PrincipalID,
 		Payload:     data,
-		Timestamp:   in.CreatedAt,
+		Timestamp:   in.Created,
 	}
 
 	return out, nil
