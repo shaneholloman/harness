@@ -1012,6 +1012,18 @@ func pullReqOperations(reflector *openapi3.Reflector) {
 	_ = reflector.Spec.AddOperation(http.MethodGet,
 		"/repos/{repo_ref}/pullreq/{pullreq_number}/automerge", opAutoMergeGet)
 
+	opMergeQueueGet := openapi3.Operation{}
+	opMergeQueueGet.WithTags("pullreq")
+	opMergeQueueGet.WithMapOfAnything(map[string]any{"operationId": "prMergeQueueGet"})
+	_ = reflector.SetRequest(&opMergeQueueGet, new(pullReqRequest), http.MethodGet)
+	_ = reflector.SetJSONResponse(&opMergeQueueGet, new(pullreq.MergeQueueGetOutput), http.StatusOK)
+	_ = reflector.SetJSONResponse(&opMergeQueueGet, new(usererror.Error), http.StatusBadRequest)
+	_ = reflector.SetJSONResponse(&opMergeQueueGet, new(usererror.Error), http.StatusInternalServerError)
+	_ = reflector.SetJSONResponse(&opMergeQueueGet, new(usererror.Error), http.StatusUnauthorized)
+	_ = reflector.SetJSONResponse(&opMergeQueueGet, new(usererror.Error), http.StatusForbidden)
+	_ = reflector.Spec.AddOperation(http.MethodGet,
+		"/repos/{repo_ref}/pullreq/{pullreq_number}/mergequeue", opMergeQueueGet)
+
 	opMergeQueueEnable := openapi3.Operation{}
 	opMergeQueueEnable.WithTags("pullreq")
 	opMergeQueueEnable.WithMapOfAnything(map[string]any{"operationId": "prMergeQueueEnable"})

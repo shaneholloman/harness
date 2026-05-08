@@ -122,13 +122,9 @@ func (s *Service) handlerCheckFinished(
 		return nil
 	}
 
-	checks, err := s.checkStore.List(ctx, repoID, commitSHA.String(), types.CheckListOptions{
-		ListQueryFilter: types.ListQueryFilter{
-			Pagination: types.Pagination{Page: 0, Size: MaximumQueueSize},
-		},
-	})
+	checks, err := s.ListChecks(ctx, repoID, commitSHA)
 	if err != nil {
-		return fmt.Errorf("failed to list merge queue entries by checks commit SHA: %w", err)
+		return fmt.Errorf("failed to list checks: %w", err)
 	}
 
 	completedChecks := make([]string, 0, len(checks))
@@ -158,4 +154,19 @@ func (s *Service) handlerCheckFinished(
 	}
 
 	return nil
+}
+
+func (s *Service) ListChecks(ctx context.Context, repoID int64, commitSHA sha.SHA) ([]types.Check, error) {
+	const largeLimit = 10000 // use a reasonably large limit because we need all reported checks
+
+	checks, err := s.checkStore.List(ctx, repoID, commitSHA.String(), types.CheckListOptions{
+		ListQueryFilter: types.ListQueryFilter{
+			Pagination: types.Pagination{Page: 0, Size: largeLimit},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list merge queue entries by checks commit SHA: %w", err)
+	}
+
+	return checks, nil
 }
