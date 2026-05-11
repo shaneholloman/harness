@@ -47,6 +47,10 @@ func ProvideConnectorService() ConnectorService {
 	return connectorServiceNoop{}
 }
 
+func ProvideWebhookService() WebhookService {
+	return webhookServiceNoop{}
+}
+
 func ProvideImporter(
 	config *types.Config,
 	urlProvider url.Provider,

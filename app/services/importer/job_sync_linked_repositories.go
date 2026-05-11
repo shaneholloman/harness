@@ -187,14 +187,16 @@ func (r *JobSyncLinkedRepositories) Handle(
 			return "", fmt.Errorf("failed to sync repository: %w", err)
 		}
 
-		_, err = r.linkedRepoStore.UpdateOptLock(ctx, &linkedRepo, func(l *types.LinkedRepo) error {
+		updated, err := r.linkedRepoStore.UpdateOptLock(ctx, &linkedRepo, func(l *types.LinkedRepo) error {
 			l.LastFullSync = time.Now().UnixMilli()
+			l.CloneURL = accessInfo.URL
 			return nil
 		})
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to update linked repo")
 			continue
 		}
+		linkedRepo = *updated
 
 		log.Info().Msg("synced linked repository")
 

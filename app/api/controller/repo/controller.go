@@ -127,6 +127,7 @@ type Controller struct {
 	autolinkSvc            *autolink.Service
 	dotRangeService        *dotrange.Service
 	connectorService       importer.ConnectorService
+	webhookService         importer.WebhookService
 	repoLangStore          store.RepoLangStore
 	mergeQueueService      *mergequeuesvc.Service
 }
@@ -177,6 +178,7 @@ func NewController(
 	autolinkSvc *autolink.Service,
 	dotRangeService *dotrange.Service,
 	connectorService importer.ConnectorService,
+	webhookService importer.WebhookService,
 	repoLangStore store.RepoLangStore,
 	mergeQueueService *mergequeuesvc.Service,
 ) *Controller {
@@ -226,6 +228,7 @@ func NewController(
 		autolinkSvc:            autolinkSvc,
 		dotRangeService:        dotRangeService,
 		connectorService:       connectorService,
+		webhookService:         webhookService,
 		repoLangStore:          repoLangStore,
 		mergeQueueService:      mergeQueueService,
 	}
@@ -256,6 +259,8 @@ func (c *Controller) getRepoCheckAccess(
 
 // getRepoCheckAccessWithLinked fetches a repo, checks if repo state allows requested permission
 // and checks if the current user has permission to access it.
+//
+//nolint:unparam
 func (c *Controller) getRepoCheckAccessWithLinked(
 	ctx context.Context,
 	session *auth.Session,

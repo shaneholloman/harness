@@ -122,57 +122,58 @@ func (c *staticSpaceIDCache) Get(_ context.Context, id int64) (*types.SpaceCore,
 	return nil, fmt.Errorf("space %d not found", id)
 }
 
-// TestLinkedCreate_DecodesConnectorRef drives LinkedCreate up to verifyConnectorAccess
-// for each supported ref scope, asserting the controller decodes the API-facing ref
-// against the parent space path before forwarding it to the connector service.
-// The connector service is stubbed to fail so the call returns before the
+// TestLinkedCreate_DelegatesConnectorRefDecode drives LinkedCreate up to
+// verifyConnectorAccess and asserts the controller routes the API-facing ref
+// + parent space path through ConnectorService.ResolveConnectorRef, then
+// forwards the resolved (path, identifier) pair to GetAccessInfo. The
+// connector service is stubbed to fail so the call returns before the
 // transactional repo-creation block, which would otherwise need a full
 // store/git/tx setup.
-func TestLinkedCreate_DecodesConnectorRef(t *testing.T) {
+func TestLinkedCreate_DelegatesConnectorRefDecode(t *testing.T) {
 	const parentSpaceID int64 = 1
 	const parentSpacePath = "acme/platform/code"
+	const inputRef = "account.githubConn"
+	const resolvedPath = "acme"
+	const resolvedIdentifier = "githubConn"
 
-	cases := []struct {
-		name           string
-		ref            string
-		wantPath       string
-		wantIdentifier string
-	}{
-		{"account ref", "account.githubConn", "acme", "githubConn"},
-		{"org ref", "org.githubConn", "acme/platform", "githubConn"},
-		{"bare ref", "githubConn", "acme/platform/code", "githubConn"},
+	connSvc := &mockConnectorService{
+		err:                     stderrors.New("stubbed connector failure"),
+		resolveReturnPath:       resolvedPath,
+		resolveReturnIdentifier: resolvedIdentifier,
+	}
+	c := newLinkedCreateTestController(parentSpaceID, parentSpacePath, connSvc)
+
+	_, err := c.LinkedCreate(context.Background(), &auth.Session{}, &LinkedCreateInput{
+		ParentRef:    fmt.Sprintf("%d", parentSpaceID),
+		Identifier:   "my-linked-repo",
+		ConnectorRef: inputRef,
+	})
+	if err == nil {
+		t.Fatal("expected connector-access error, got nil")
+	}
+	if !strings.Contains(err.Error(), "Failed to use connector") {
+		t.Errorf("expected connector-access error, got: %q", err.Error())
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			connSvc := &mockConnectorService{
-				err: stderrors.New("stubbed connector failure"),
-			}
-			c := newLinkedCreateTestController(parentSpaceID, parentSpacePath, connSvc)
+	if !connSvc.resolveCalled {
+		t.Fatal("connectorService.ResolveConnectorRef was not invoked")
+	}
+	if connSvc.resolveGotParentSpacePath != parentSpacePath {
+		t.Errorf("resolver got parent path %q; want %q", connSvc.resolveGotParentSpacePath, parentSpacePath)
+	}
+	if connSvc.resolveGotRef != inputRef {
+		t.Errorf("resolver got ref %q; want %q", connSvc.resolveGotRef, inputRef)
+	}
 
-			_, err := c.LinkedCreate(context.Background(), &auth.Session{}, &LinkedCreateInput{
-				ParentRef:    fmt.Sprintf("%d", parentSpaceID),
-				Identifier:   "my-linked-repo",
-				ConnectorRef: tc.ref,
-			})
-			if err == nil {
-				t.Fatal("expected connector-access error, got nil")
-			}
-			if !strings.Contains(err.Error(), "Failed to use connector") {
-				t.Errorf("expected connector-access error, got: %q", err.Error())
-			}
-
-			if !connSvc.called {
-				t.Fatal("connectorService.GetAccessInfo was not invoked")
-			}
-			if connSvc.receivedDef.Path != tc.wantPath {
-				t.Errorf("connector path = %q; want %q", connSvc.receivedDef.Path, tc.wantPath)
-			}
-			if connSvc.receivedDef.Identifier != tc.wantIdentifier {
-				t.Errorf("connector identifier = %q; want %q",
-					connSvc.receivedDef.Identifier, tc.wantIdentifier)
-			}
-		})
+	if !connSvc.called {
+		t.Fatal("connectorService.GetAccessInfo was not invoked")
+	}
+	if connSvc.receivedDef.Path != resolvedPath {
+		t.Errorf("connector path = %q; want %q", connSvc.receivedDef.Path, resolvedPath)
+	}
+	if connSvc.receivedDef.Identifier != resolvedIdentifier {
+		t.Errorf("connector identifier = %q; want %q",
+			connSvc.receivedDef.Identifier, resolvedIdentifier)
 	}
 }
 

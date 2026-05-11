@@ -99,6 +99,7 @@ func ProvideController(
 	autolinkSvc *autolink.Service,
 	dotRangeService *dotrange.Service,
 	connectorService importer.ConnectorService,
+	webhookService importer.WebhookService,
 	repoLangStore store.RepoLangStore,
 	mergeQueueService *mergequeue.Service,
 ) *Controller {
@@ -111,7 +112,7 @@ func ProvideController(
 		codeOwners, repoReporter, indexer, limiter, locker, auditService, mtxManager, identifierCheck,
 		repoChecks, publicAccess, labelSvc, instrumentation, userGroupStore, userGroupService,
 		rulesSvc, sseStreamer, lfsCtrl, favoriteStore, signatureVerifyService,
-		autolinkSvc, dotRangeService, connectorService,
+		autolinkSvc, dotRangeService, connectorService, webhookService,
 		repoLangStore, mergeQueueService,
 	)
 }

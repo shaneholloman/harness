@@ -375,6 +375,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	autoLinkStore := database.ProvideAutolinkStore(db)
 	autolinkService := autolink.ProvideAutoLink(transactor, spaceStore, repoStore, autoLinkStore)
 	dotrangeService := dotrange.ProvideService(gitInterface, repoFinder, provider, authorizer)
+	webhookService := importer.ProvideWebhookService()
 	repoLangStore := database.ProvideRepoLangStore(db)
 	reporter3, err := events5.ProvideReporter(eventsSystem)
 	if err != nil {
@@ -409,7 +410,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	repoController := repo.ProvideController(config, transactor, provider, authorizer, repoStore, repoActivityStore, linkedRepoStore, spaceStore, pipelineStore, principalStore, executionStore, ruleStore, checkStore, pullReqStore, settingsService, principalInfoCache, protectionManager, gitInterface, spaceFinder, repoFinder, jobRepository, jobReferenceSync, jobRepositoryLink, codeownersService, eventsReporter, indexer, resourceLimiter, lockerLocker, auditService, mutexManager, repoIdentifier, repoCheck, publicaccessService, labelService, instrumentService, userGroupStore, usergroupService, rulesService, streamer, lfsController, favoriteStore, signatureVerifyService, autolinkService, dotrangeService, connectorService, repoLangStore, mergequeueService)
+	repoController := repo.ProvideController(config, transactor, provider, authorizer, repoStore, repoActivityStore, linkedRepoStore, spaceStore, pipelineStore, principalStore, executionStore, ruleStore, checkStore, pullReqStore, settingsService, principalInfoCache, protectionManager, gitInterface, spaceFinder, repoFinder, jobRepository, jobReferenceSync, jobRepositoryLink, codeownersService, eventsReporter, indexer, resourceLimiter, lockerLocker, auditService, mutexManager, repoIdentifier, repoCheck, publicaccessService, labelService, instrumentService, userGroupStore, usergroupService, rulesService, streamer, lfsController, favoriteStore, signatureVerifyService, autolinkService, dotrangeService, connectorService, webhookService, repoLangStore, mergequeueService)
 	reposettingsController := reposettings.ProvideController(authorizer, repoFinder, spaceFinder, settingsService, auditService)
 	stageStore := database.ProvideStageStore(db)
 	schedulerScheduler, err := scheduler.ProvideScheduler(stageStore, mutexManager)
@@ -551,12 +552,12 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	webhookExecutionStore := database.ProvideWebhookExecutionStore(db)
 	urlProvider := webhook.ProvideURLProvider(ctx)
 	secretService := secret3.ProvideSecretService(secretStore, encrypter, spaceFinder)
-	webhookService, err := webhook.ProvideService(ctx, webhookConfig, transactor, readerFactory3, readerFactory2, eventsReaderFactory, webhookStore, webhookExecutionStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, provider, principalStore, gitInterface, encrypter, labelStore, urlProvider, labelValueStore, auditService, streamer, secretService, spacePathStore)
+	service3, err := webhook.ProvideService(ctx, webhookConfig, transactor, readerFactory3, readerFactory2, eventsReaderFactory, webhookStore, webhookExecutionStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, provider, principalStore, gitInterface, encrypter, labelStore, urlProvider, labelValueStore, auditService, streamer, secretService, spacePathStore)
 	if err != nil {
 		return nil, err
 	}
 	preprocessor := webhook2.ProvidePreprocessor()
-	webhookController := webhook2.ProvideController(authorizer, spaceFinder, repoFinder, webhookService, encrypter, preprocessor)
+	webhookController := webhook2.ProvideController(authorizer, spaceFinder, repoFinder, service3, encrypter, preprocessor)
 	reporter10, err := events13.ProvideReporter(eventsSystem)
 	if err != nil {
 		return nil, err
@@ -653,7 +654,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	service3, err := webhook3.ProvideService(ctx, webhookConfig, transactor, readerFactory4, webhooksRepository, webhooksExecutionRepository, spaceStore, provider, principalStore, urlProvider, spacePathStore, secretService, registryRepository, encrypter, spaceFinder)
+	service4, err := webhook3.ProvideService(ctx, webhookConfig, transactor, readerFactory4, webhooksRepository, webhooksExecutionRepository, spaceStore, provider, principalStore, urlProvider, spacePathStore, secretService, registryRepository, encrypter, spaceFinder)
 	if err != nil {
 		return nil, err
 	}
@@ -672,7 +673,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	reporter12 := artifact.ProvideArtifactReporterValue(artifactReporter)
 	reindexingService := reindexing.ProvideReindexingService(asyncprocessingReporter, reporter12, packageWrapper)
 	deletionService := deletion.NewService(artifactRepository, imageRepository, manifestRepository, tagRepository, registryBlobRepository, fileManager, transactor, v3, deletionPackageWrapper, reindexingService, artifactReporter, provider)
-	apiHandler := router.APIHandlerProvider(registryRepository, upstreamProxyConfigRepository, fileManager, blobRepository, genericBlobRepository, tagRepository, manifestRepository, cleanupPolicyRepository, imageRepository, spaceFinder, transactor, accessor, authenticator, provider, authorizer, auditService, artifactRepository, webhooksRepository, webhooksExecutionRepository, service3, spacePathStore, artifactReporter, downloadStatRepository, config, registryBlobRepository, registryFinder, asyncprocessingReporter, registryHelper, spaceController, quarantineArtifactRepository, spaceStore, packageWrapper, cacheService, finder, v3, deletionService, storageService, app)
+	apiHandler := router.APIHandlerProvider(registryRepository, upstreamProxyConfigRepository, fileManager, blobRepository, genericBlobRepository, tagRepository, manifestRepository, cleanupPolicyRepository, imageRepository, spaceFinder, transactor, accessor, authenticator, provider, authorizer, auditService, artifactRepository, webhooksRepository, webhooksExecutionRepository, service4, spacePathStore, artifactReporter, downloadStatRepository, config, registryBlobRepository, registryFinder, asyncprocessingReporter, registryHelper, spaceController, quarantineArtifactRepository, spaceStore, packageWrapper, cacheService, finder, v3, deletionService, storageService, app)
 	packageTagRepository := database2.ProvidePackageTagDao(db)
 	localBase := base.LocalBaseProvider(registryRepository, registryFinder, fileManager, transactor, imageRepository, artifactRepository, nodesRepository, packageTagRepository, authorizer, spaceFinder, auditService)
 	mavenDBStore := maven.DBStoreProvider(registryRepository, imageRepository, artifactRepository, spaceStore, bandwidthStatRepository, downloadStatRepository, nodesRepository, upstreamProxyConfigRepository)
@@ -877,7 +878,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	servicesServices := services.ProvideServices(webhookService, pullreqService, triggerService, jobScheduler, collectorJob, sizeCalculator, repoService, cleanupService, notificationService, keywordsearchService, gitspaceServices, instrumentService, consumer, repositoryCount, service3, branchService, repoactivityService, asyncprocessingService, jobRpmRegistryIndex, languageAnalyzer)
+	servicesServices := services.ProvideServices(service3, pullreqService, triggerService, jobScheduler, collectorJob, sizeCalculator, repoService, cleanupService, notificationService, keywordsearchService, gitspaceServices, instrumentService, consumer, repositoryCount, service4, branchService, repoactivityService, asyncprocessingService, jobRpmRegistryIndex, languageAnalyzer)
 	listenAndServeServer := server.ProvideNoOpMetricServer()
 	serverSystem := server.NewSystem(bootstrapBootstrap, serverServer, sshServer, poller, resolverManager, servicesServices, listenAndServeServer)
 	return serverSystem, nil

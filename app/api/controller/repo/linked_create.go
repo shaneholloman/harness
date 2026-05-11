@@ -88,15 +88,28 @@ func (c *Controller) LinkedCreate(
 		return nil, errPublicRepoCreationDisabled
 	}
 
-	connectorPath, connectorIdentifier := importer.DecodeConnectorRef(parentSpace.Path, in.ConnectorRef)
+	connectorPath, connectorIdentifier := c.connectorService.ResolveConnectorRef(parentSpace.Path, in.ConnectorRef)
 	connector := importer.ConnectorDef{
 		Path:       connectorPath,
 		Identifier: connectorIdentifier,
 	}
 
-	defaultBranch, err := c.verifyConnectorAccess(ctx, connector)
+	defaultBranch, repoURL, err := c.verifyConnectorAccess(ctx, connector)
 	if err != nil {
 		return nil, errors.InvalidArgument("Failed to use connector to access the remote repository.")
+	}
+
+	// Register the provider-side webhook before creating any gitness state.
+	// Failing here means no repo/linked_repo rows exist, so there is nothing
+	// to roll back. The upsert is URL-idempotent on the SCM-service side, so
+	// retrying with the same connector + URL returns the same hook.
+	if err := c.webhookService.UpsertWebhook(ctx, importer.UpsertWebhookInput{
+		SpacePath:           parentSpace.Path,
+		ConnectorPath:       connector.Path,
+		ConnectorIdentifier: connector.Identifier,
+		CloneURL:            repoURL,
+	}); err != nil {
+		return nil, webhookRegistrationUserError(err)
 	}
 
 	repo := importer.NewRepo(
@@ -128,7 +141,7 @@ func (c *Controller) LinkedCreate(
 			return fmt.Errorf("failed to create repository: %w", err)
 		}
 
-		err = c.linkedRepoStore.Create(ctx, &types.LinkedRepo{
+		linkedRepo := &types.LinkedRepo{
 			RepoID:              repo.ID,
 			Version:             0,
 			Created:             now,
@@ -136,7 +149,9 @@ func (c *Controller) LinkedCreate(
 			LastFullSync:        now,
 			ConnectorPath:       connector.Path,
 			ConnectorIdentifier: connector.Identifier,
-		})
+			CloneURL:            repoURL,
+		}
+		err = c.linkedRepoStore.Create(ctx, linkedRepo)
 		if err != nil {
 			return fmt.Errorf("failed to create linked repository: %w", err)
 		}
@@ -191,18 +206,24 @@ func (c *Controller) LinkedCreate(
 	return repoOutput, nil
 }
 
-func (c *Controller) verifyConnectorAccess(ctx context.Context, connector importer.ConnectorDef) (string, error) {
+// verifyConnectorAccess verifies the connector can reach the remote repo and
+// returns its default branch plus the (credential-free) clone URL. The URL is
+// needed later to register the provider-side webhook.
+func (c *Controller) verifyConnectorAccess(
+	ctx context.Context,
+	connector importer.ConnectorDef,
+) (string, string, error) {
 	systemPrincipal := bootstrap.NewSystemServiceSession().Principal
 	gitIdentity := identityFromPrincipal(systemPrincipal)
 
 	accessInfo, err := c.connectorService.GetAccessInfo(ctx, connector)
 	if err != nil {
-		return "", fmt.Errorf("failed to get repository access info from connector: %w", err)
+		return "", "", fmt.Errorf("failed to get repository access info from connector: %w", err)
 	}
 
 	urlWithCredentials, err := accessInfo.URLWithCredentials()
 	if err != nil {
-		return "", fmt.Errorf("failed to get repository URL: %w", err)
+		return "", "", fmt.Errorf("failed to get repository URL: %w", err)
 	}
 
 	envVars, err := githook.GenerateEnvironmentVariablesForOperation(
@@ -214,7 +235,7 @@ func (c *Controller) verifyConnectorAccess(ctx context.Context, connector import
 		enum.GitOpTypeManageRepo,
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate git hook environment variables: %w", err)
+		return "", "", fmt.Errorf("failed to generate git hook environment variables: %w", err)
 	}
 
 	now := time.Now()
@@ -229,7 +250,7 @@ func (c *Controller) verifyConnectorAccess(ctx context.Context, connector import
 		CommitterDate: &now,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to create repository: %w", err)
+		return "", "", fmt.Errorf("failed to create repository: %w", err)
 	}
 
 	gitUID := resp.UID
@@ -254,8 +275,8 @@ func (c *Controller) verifyConnectorAccess(ctx context.Context, connector import
 		Source:     urlWithCredentials,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to get repository default branch: %w", err)
+		return "", "", fmt.Errorf("failed to get repository default branch: %w", err)
 	}
 
-	return respDefBranch.BranchName, nil
+	return respDefBranch.BranchName, accessInfo.URL, nil
 }

@@ -51,6 +51,7 @@ type linkedRepo struct {
 	ConnectorPath       string `db:"linked_repo_connector_path"`
 	ConnectorIdentifier string `db:"linked_repo_connector_identifier"`
 	ConnectorRepo       string `db:"linked_repo_connector_repo"`
+	CloneURL            string `db:"linked_repo_clone_url"`
 }
 
 const (
@@ -62,7 +63,8 @@ const (
 		,linked_repo_last_full_sync
 		,linked_repo_connector_path
 		,linked_repo_connector_identifier
-		,linked_repo_connector_repo`
+		,linked_repo_connector_repo
+		,linked_repo_clone_url`
 
 	linkedRepoSelectBase = `
 	SELECT` + linkedRepoColumns + `
@@ -80,7 +82,7 @@ func (s *LinkedRepoStore) Find(ctx context.Context, repoID int64) (*types.Linked
 		return nil, database.ProcessSQLErrorf(ctx, err, "Failed to find linked repo")
 	}
 
-	return (*types.LinkedRepo)(dst), nil
+	return mapToLinkedRepo(dst), nil
 }
 
 func (s *LinkedRepoStore) Create(ctx context.Context, v *types.LinkedRepo) error {
@@ -94,6 +96,7 @@ func (s *LinkedRepoStore) Create(ctx context.Context, v *types.LinkedRepo) error
 		,linked_repo_connector_path
 		,linked_repo_connector_identifier
 		,linked_repo_connector_repo
+		,linked_repo_clone_url
 	) values (
 		 :linked_repo_id
 		,:linked_repo_version
@@ -103,11 +106,12 @@ func (s *LinkedRepoStore) Create(ctx context.Context, v *types.LinkedRepo) error
 		,:linked_repo_connector_path
 		,:linked_repo_connector_identifier
 		,:linked_repo_connector_repo
+		,:linked_repo_clone_url
 	)`
 
 	db := dbtx.GetAccessor(ctx, s.db)
 
-	query, arg, err := db.BindNamed(sqlQuery, (*linkedRepo)(v))
+	query, arg, err := db.BindNamed(sqlQuery, mapToInternalLinkedRepo(v))
 	if err != nil {
 		return database.ProcessSQLErrorf(ctx, err, "Failed to bind linked repo object")
 	}
@@ -126,9 +130,10 @@ func (s *LinkedRepoStore) Update(ctx context.Context, linked *types.LinkedRepo) 
 			 linked_repo_version = :linked_repo_version
 			,linked_repo_updated = :linked_repo_updated
 			,linked_repo_last_full_sync = :linked_repo_last_full_sync
+			,linked_repo_clone_url = :linked_repo_clone_url
 		WHERE linked_repo_id = :linked_repo_id AND linked_repo_version = :linked_repo_version - 1`
 
-	dbLinked := linkedRepo(*linked)
+	dbLinked := mapToInternalLinkedRepo(linked)
 	dbLinked.Version++
 	dbLinked.Updated = time.Now().UnixMilli()
 
@@ -155,6 +160,7 @@ func (s *LinkedRepoStore) Update(ctx context.Context, linked *types.LinkedRepo) 
 
 	linked.Version = dbLinked.Version
 	linked.Updated = dbLinked.Updated
+	linked.CloneURL = dbLinked.CloneURL
 
 	return nil
 }
@@ -210,9 +216,37 @@ func (s *LinkedRepoStore) List(ctx context.Context, limit int) ([]types.LinkedRe
 	}
 
 	result := make([]types.LinkedRepo, len(dst))
-	for i, r := range dst {
-		result[i] = types.LinkedRepo(r)
+	for i := range dst {
+		result[i] = *mapToLinkedRepo(&dst[i])
 	}
 
 	return result, nil
+}
+
+func mapToLinkedRepo(src *linkedRepo) *types.LinkedRepo {
+	return &types.LinkedRepo{
+		RepoID:              src.RepoID,
+		Version:             src.Version,
+		Created:             src.Created,
+		Updated:             src.Updated,
+		LastFullSync:        src.LastFullSync,
+		ConnectorPath:       src.ConnectorPath,
+		ConnectorIdentifier: src.ConnectorIdentifier,
+		ConnectorRepo:       src.ConnectorRepo,
+		CloneURL:            src.CloneURL,
+	}
+}
+
+func mapToInternalLinkedRepo(src *types.LinkedRepo) *linkedRepo {
+	return &linkedRepo{
+		RepoID:              src.RepoID,
+		Version:             src.Version,
+		Created:             src.Created,
+		Updated:             src.Updated,
+		LastFullSync:        src.LastFullSync,
+		ConnectorPath:       src.ConnectorPath,
+		ConnectorIdentifier: src.ConnectorIdentifier,
+		ConnectorRepo:       src.ConnectorRepo,
+		CloneURL:            src.CloneURL,
+	}
 }

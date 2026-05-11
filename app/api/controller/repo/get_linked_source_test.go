@@ -42,17 +42,41 @@ func (m *mockLinkedRepoStore) Find(_ context.Context, _ int64) (*types.LinkedRep
 }
 
 // mockConnectorService is a test stub for importer.ConnectorService that records the call.
+// Resolve/Encode use identity defaults (parent path + ref) unless overridden via
+// resolveReturnPath / resolveReturnIdentifier — that lets linked_create-flow
+// tests assert that the controller routes ref decoding through the service
+// without coupling them to platform-specific account./org. parsing rules.
 type mockConnectorService struct {
 	info        importer.AccessInfo
 	err         error
 	receivedDef importer.ConnectorDef
 	called      bool
+
+	resolveCalled             bool
+	resolveGotParentSpacePath string
+	resolveGotRef             string
+	resolveReturnPath         string
+	resolveReturnIdentifier   string
 }
 
 func (m *mockConnectorService) GetAccessInfo(_ context.Context, c importer.ConnectorDef) (importer.AccessInfo, error) {
 	m.called = true
 	m.receivedDef = c
 	return m.info, m.err
+}
+
+func (m *mockConnectorService) ResolveConnectorRef(parentSpacePath, ref string) (string, string) {
+	m.resolveCalled = true
+	m.resolveGotParentSpacePath = parentSpacePath
+	m.resolveGotRef = ref
+	if m.resolveReturnPath != "" || m.resolveReturnIdentifier != "" {
+		return m.resolveReturnPath, m.resolveReturnIdentifier
+	}
+	return parentSpacePath, ref
+}
+
+func (m *mockConnectorService) EncodeConnectorRef(_, _, identifier string) string {
+	return identifier
 }
 
 func newLinkedSourceTestController(

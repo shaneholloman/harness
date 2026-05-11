@@ -276,6 +276,7 @@ func initSystem(ctx context.Context, config *types.Config) (*cliserver.System, e
 		resolver.WireSet,
 		importer.WireSet,
 		importer.ProvideConnectorService,
+		importer.ProvideWebhookService,
 		migrateservice.WireSet,
 		canceler.WireSet,
 		exporter.WireSet,

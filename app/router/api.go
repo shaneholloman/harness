@@ -409,6 +409,7 @@ func setupRepos(r chi.Router,
 			r.Post("/fork", handlerrepo.HandleCreateFork(repoCtrl))
 			r.Post("/fork-sync", handlerrepo.HandleForkSync(repoCtrl))
 			r.Post("/linked/sync", handlerrepo.HandleLinkedSync(repoCtrl))
+			r.Post("/linked/register-webhook", handlerrepo.HandleLinkedRegisterWebhook(repoCtrl))
 
 			r.Route("/settings", func(r chi.Router) {
 				r.Get("/security", handlerreposettings.HandleSecurityFind(repoSettingsCtrl))
