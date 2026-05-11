@@ -26,17 +26,22 @@ var MinFlushInterval = time.Minute
 
 type Config struct {
 	FlushInterval time.Duration
+	QueueSize     int
 }
 
 func (c *Config) Sanitize() {
 	if c.FlushInterval < MinFlushInterval {
 		c.FlushInterval = MinFlushInterval
 	}
+	if c.QueueSize <= 0 {
+		c.QueueSize = QueueSize
+	}
 }
 
 func NewConfig(global *types.Config) Config {
 	cfg := Config{
 		FlushInterval: global.UsageMetrics.FlushInterval,
+		QueueSize:     global.UsageMetrics.QueueSize,
 	}
 
 	cfg.Sanitize()

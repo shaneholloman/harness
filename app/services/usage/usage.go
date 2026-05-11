@@ -24,6 +24,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const QueueSize = 128
+
 var (
 	days30 = time.Duration(30*24) * time.Hour
 )
@@ -63,6 +65,7 @@ type MetricStore interface {
 }
 
 type Mediator struct {
+	ctx   context.Context
 	queue chan Metric
 
 	spaceFinder  SpaceFinder
@@ -80,8 +83,11 @@ func NewMediator(
 	usageMetricsStore MetricStore,
 	config Config,
 ) *Mediator {
+	config.Sanitize()
+
 	m := &Mediator{
-		queue:        make(chan Metric, 1),
+		ctx:          ctx,
+		queue:        make(chan Metric, config.QueueSize),
 		spaceFinder:  spaceFinder,
 		metricsStore: usageMetricsStore,
 		config:       config,
@@ -104,8 +110,6 @@ func (m *Mediator) Start(ctx context.Context) {
 		m.process(ctx, usageMetrics)
 		m.lastUpdated = time.Now()
 	}
-
-	m.config.Sanitize()
 
 	ticker := time.NewTicker(m.config.FlushInterval)
 	defer ticker.Stop()
@@ -141,17 +145,7 @@ func (m *Mediator) Send(ctx context.Context, payload Metric) error {
 		return ctx.Err()
 	case m.queue <- payload:
 	default:
-		// queue is full then wait in new go routine
-		// until one of consumer read from channel,
-		// we dont want to block caller goroutine
-		log.Ctx(ctx).Warn().Msg("usage metric queue full")
-		go func() {
-			select {
-			case <-ctx.Done():
-				log.Ctx(ctx).Warn().Msg("usage metric dropped: context canceled")
-			case m.queue <- payload:
-			}
-		}()
+		log.Ctx(ctx).Warn().Msg("usage metric dropped: queue full")
 	}
 	return nil
 }

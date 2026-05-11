@@ -593,6 +593,7 @@ type Config struct {
 	UsageMetrics struct {
 		Enabled       bool          `envconfig:"GITNESS_USAGE_METRICS_ENABLED" default:"false"`
 		FlushInterval time.Duration `envconfig:"GITNESS_USAGE_METRICS_FLUSH_INTERVAL" default:"1m"`
+		QueueSize     int           `envconfig:"GITNESS_USAGE_METRICS_QUEUE_SIZE" default:"128"`
 	}
 
 	Development struct {
