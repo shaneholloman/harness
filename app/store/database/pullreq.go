@@ -787,6 +787,17 @@ func (s *PullReqStore) applyFilter(stmt *squirrel.SelectBuilder, opts *types.Pul
 		}
 	}
 
+	if len(opts.RepoIDs) == 1 {
+		*stmt = stmt.Where("pullreq_target_repo_id = ?", opts.RepoIDs[0])
+	} else if len(opts.RepoIDs) > 1 {
+		switch s.db.DriverName() {
+		case SqliteDriverName:
+			*stmt = stmt.Where(squirrel.Eq{"pullreq_target_repo_id": opts.RepoIDs})
+		case PostgresDriverName:
+			*stmt = stmt.Where("pullreq_target_repo_id = ANY(?)", pq.Array(opts.RepoIDs))
+		}
+	}
+
 	if len(opts.RepoIDBlacklist) == 1 {
 		*stmt = stmt.Where("pullreq_target_repo_id <> ?", opts.RepoIDBlacklist[0])
 	} else if len(opts.RepoIDBlacklist) > 1 {

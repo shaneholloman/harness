@@ -181,6 +181,7 @@ type PullReqFilter struct {
 
 	// internal use only
 	SpaceIDs        []int64
+	RepoIDs         []int64
 	RepoIDBlacklist []int64
 }
 
