@@ -20,6 +20,7 @@ import (
 	"github.com/harness/gitness/app/api/controller/pullreq"
 	"github.com/harness/gitness/app/api/request"
 	"github.com/harness/gitness/app/api/usererror"
+	"github.com/harness/gitness/app/services/label"
 	"github.com/harness/gitness/git"
 	gittypes "github.com/harness/gitness/git/api"
 	"github.com/harness/gitness/types"
@@ -163,6 +164,21 @@ type getPullReqChecksRequest struct {
 type pullReqAssignLabelInput struct {
 	pullReqRequest
 	types.PullReqLabelAssignInput
+}
+
+type pullReqSuggestLabelsBatchRequest struct {
+	pullReqRequest
+	label.CreatePullReqLabelSuggestionsRequest
+}
+
+type pullReqSuggestedLabelRequest struct {
+	pullReqRequest
+	LabelID int64 `path:"label_id"`
+}
+
+type pullReqApplySuggestedLabelRequest struct {
+	pullReqRequest
+	LabelID int64 `path:"label_id"`
 }
 
 var queryParameterQueryPullRequest = openapi3.ParameterOrRef{
@@ -1062,4 +1078,55 @@ func pullReqOperations(reflector *openapi3.Reflector) {
 	_ = reflector.SetJSONResponse(&opMergeQueuePrioritize, new(usererror.Error), http.StatusForbidden)
 	_ = reflector.Spec.AddOperation(http.MethodPost,
 		"/repos/{repo_ref}/pullreq/{pullreq_number}/mergequeue/prioritize", opMergeQueuePrioritize)
+
+	opListSuggestedLabels := openapi3.Operation{}
+	opListSuggestedLabels.WithTags("pullreq")
+	opListSuggestedLabels.WithMapOfAnything(map[string]any{"operationId": "listSuggestedLabels"})
+	opListSuggestedLabels.WithParameters(QueryParameterPage, QueryParameterLimit)
+	_ = reflector.SetRequest(&opListSuggestedLabels, new(pullReqRequest), http.MethodGet)
+	_ = reflector.SetJSONResponse(&opListSuggestedLabels, new([]*types.PullReqLabelSuggestionResponse), http.StatusOK)
+	_ = reflector.SetJSONResponse(&opListSuggestedLabels, new(usererror.Error), http.StatusBadRequest)
+	_ = reflector.SetJSONResponse(&opListSuggestedLabels, new(usererror.Error), http.StatusInternalServerError)
+	_ = reflector.SetJSONResponse(&opListSuggestedLabels, new(usererror.Error), http.StatusUnauthorized)
+	_ = reflector.SetJSONResponse(&opListSuggestedLabels, new(usererror.Error), http.StatusForbidden)
+	_ = reflector.Spec.AddOperation(http.MethodGet,
+		"/repos/{repo_ref}/pullreq/{pullreq_number}/suggestions/labels", opListSuggestedLabels)
+
+	opSuggestLabelsBatch := openapi3.Operation{}
+	opSuggestLabelsBatch.WithTags("pullreq")
+	opSuggestLabelsBatch.WithMapOfAnything(map[string]any{"operationId": "suggestLabelsBatch"})
+	_ = reflector.SetRequest(&opSuggestLabelsBatch, new(pullReqSuggestLabelsBatchRequest), http.MethodPost)
+	_ = reflector.SetJSONResponse(&opSuggestLabelsBatch, nil, http.StatusOK)
+	_ = reflector.SetJSONResponse(&opSuggestLabelsBatch, new(usererror.Error), http.StatusBadRequest)
+	_ = reflector.SetJSONResponse(&opSuggestLabelsBatch, new(usererror.Error), http.StatusInternalServerError)
+	_ = reflector.SetJSONResponse(&opSuggestLabelsBatch, new(usererror.Error), http.StatusUnauthorized)
+	_ = reflector.SetJSONResponse(&opSuggestLabelsBatch, new(usererror.Error), http.StatusForbidden)
+	_ = reflector.Spec.AddOperation(http.MethodPost,
+		"/repos/{repo_ref}/pullreq/{pullreq_number}/suggestions/labels/batch", opSuggestLabelsBatch)
+
+	opRemoveSuggestedLabel := openapi3.Operation{}
+	opRemoveSuggestedLabel.WithTags("pullreq")
+	opRemoveSuggestedLabel.WithMapOfAnything(map[string]any{"operationId": "removeSuggestedLabel"})
+	_ = reflector.SetRequest(&opRemoveSuggestedLabel, new(pullReqSuggestedLabelRequest), http.MethodDelete)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, nil, http.StatusNoContent)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, new(usererror.Error), http.StatusBadRequest)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, new(usererror.Error), http.StatusInternalServerError)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, new(usererror.Error), http.StatusUnauthorized)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, new(usererror.Error), http.StatusForbidden)
+	_ = reflector.SetJSONResponse(&opRemoveSuggestedLabel, new(usererror.Error), http.StatusNotFound)
+	_ = reflector.Spec.AddOperation(http.MethodDelete,
+		"/repos/{repo_ref}/pullreq/{pullreq_number}/suggestions/labels/{label_id}", opRemoveSuggestedLabel)
+
+	opApplySuggestedLabel := openapi3.Operation{}
+	opApplySuggestedLabel.WithTags("pullreq")
+	opApplySuggestedLabel.WithMapOfAnything(map[string]any{"operationId": "applySuggestedLabel"})
+	_ = reflector.SetRequest(&opApplySuggestedLabel, new(pullReqApplySuggestedLabelRequest), http.MethodPost)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(types.PullReqLabel), http.StatusOK)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(usererror.Error), http.StatusBadRequest)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(usererror.Error), http.StatusInternalServerError)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(usererror.Error), http.StatusUnauthorized)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(usererror.Error), http.StatusForbidden)
+	_ = reflector.SetJSONResponse(&opApplySuggestedLabel, new(usererror.Error), http.StatusNotFound)
+	_ = reflector.Spec.AddOperation(http.MethodPost,
+		"/repos/{repo_ref}/pullreq/{pullreq_number}/suggestions/labels/{label_id}/apply", opApplySuggestedLabel)
 }

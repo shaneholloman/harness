@@ -350,7 +350,8 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	labelStore := database.ProvideLabelStore(db)
 	labelValueStore := database.ProvideLabelValueStore(db)
 	pullReqLabelAssignmentStore := database.ProvidePullReqLabelStore(db)
-	labelService := label.ProvideLabel(transactor, spaceStore, labelStore, labelValueStore, pullReqLabelAssignmentStore, spaceFinder)
+	pullReqLabelSuggestionStore := database.ProvidePullReqLabelSuggestionStore(db)
+	labelService := label.ProvideLabel(transactor, spaceStore, labelStore, labelValueStore, pullReqLabelAssignmentStore, pullReqLabelSuggestionStore, principalInfoCache, spaceFinder)
 	instrumentService := instrument.ProvideService()
 	userGroupStore := database.ProvideUserGroupStore(db)
 	usergroupService := usergroup.ProvideService()
@@ -548,7 +549,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	}
 	pullReq := migrate.ProvidePullReqImporter(provider, gitInterface, principalStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, labelStore, labelValueStore, pullReqLabelAssignmentStore, pullReqReviewerStore, pullReqReviewStore, repoFinder, transactor, mutexManager)
 	branchStore := database.ProvideBranchStore(db)
-	pullreqController := pullreq2.ProvideController(transactor, provider, authorizer, auditService, pullReqStore, pullReqActivityStore, codeCommentView, pullReqReviewStore, pullReqReviewerStore, repoStore, principalStore, userGroupStore, userGroupReviewerStore, principalInfoCache, pullReqFileViewStore, membershipStore, checkStore, autoMergeStore, mergeQueueStore, mergeQueueEntryStore, mergequeueService, gitInterface, repoFinder, reporter4, migrator, pullreqService, listService, mergeService, automergeService, protectionManager, streamer, dotrangeService, codeownersService, lockerLocker, settingsService, pullReq, labelService, instrumentService, usergroupService, branchStore, usergroupResolver, signatureVerifyService)
+	pullreqController := pullreq2.ProvideController(transactor, provider, authorizer, auditService, pullReqStore, pullReqActivityStore, codeCommentView, pullReqReviewStore, pullReqReviewerStore, repoStore, principalStore, userGroupStore, userGroupReviewerStore, principalInfoCache, pullReqFileViewStore, membershipStore, checkStore, autoMergeStore, mergeQueueStore, mergeQueueEntryStore, mergequeueService, gitInterface, repoFinder, reporter4, migrator, pullreqService, listService, mergeService, automergeService, protectionManager, streamer, dotrangeService, codeownersService, lockerLocker, settingsService, pullReq, labelService, labelStore, labelValueStore, pullReqLabelSuggestionStore, instrumentService, usergroupService, branchStore, usergroupResolver, signatureVerifyService)
 	webhookConfig := server.ProvideWebhookConfig(config)
 	webhookStore := database.ProvideWebhookStore(db)
 	webhookExecutionStore := database.ProvideWebhookExecutionStore(db)

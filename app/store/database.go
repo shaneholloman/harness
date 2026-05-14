@@ -1388,6 +1388,12 @@ type (
 		// FindByID finds label with a specified id.
 		FindByID(ctx context.Context, id int64) (*types.Label, error)
 
+		// FindByIDs finds multiple labels with specified ids.
+		FindByIDs(ctx context.Context, ids []int64) (map[int64]*types.Label, error)
+
+		// FindInfosByIDs finds label infos for multiple labels with specified ids.
+		FindInfosByIDs(ctx context.Context, ids []int64) (map[int64]*types.LabelInfo, error)
+
 		// ListInScopes lists labels defined in specified repo/spaces.
 		ListInScopes(
 			ctx context.Context,
@@ -1502,6 +1508,43 @@ type (
 			ctx context.Context,
 			pullreqIDs []int64,
 		) (map[int64][]*types.LabelPullReqAssignmentInfo, error)
+	}
+
+	// PullReqLabelSuggestionStore defines the store for pull request label suggestions.
+	PullReqLabelSuggestionStore interface {
+		// CreateMany creates new label suggestions for a pull request.
+		// It upserts suggestions based on pullreq and label unique constraint.
+		CreateMany(
+			ctx context.Context,
+			suggestions []*types.PullReqLabelSuggestion,
+		) error
+
+		// List lists label suggestions for a pull request.
+		List(
+			ctx context.Context,
+			pullreqID int64,
+			filter types.ListQueryFilter,
+		) ([]*types.PullReqLabelSuggestion, error)
+
+		// Count returns the number of label suggestions for a pull request.
+		Count(
+			ctx context.Context,
+			pullreqID int64,
+		) (int64, error)
+
+		// Find finds a label suggestion for a pull request by label.
+		Find(
+			ctx context.Context,
+			pullreqID int64,
+			labelID int64,
+		) (*types.PullReqLabelSuggestion, error)
+
+		// Delete removes all label suggestions for a pull request label regardless of value.
+		Delete(
+			ctx context.Context,
+			pullreqID int64,
+			labelID int64,
+		) error
 	}
 
 	LFSObjectStore interface {

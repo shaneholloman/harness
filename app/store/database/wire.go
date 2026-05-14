@@ -79,6 +79,7 @@ var WireSet = wire.NewSet(
 	ProvideLabelStore,
 	ProvideLabelValueStore,
 	ProvidePullReqLabelStore,
+	ProvidePullReqLabelSuggestionStore,
 	ProvideLFSObjectStore,
 	ProvideInfraProviderTemplateStore,
 	ProvideInfraProvisionedStore,
@@ -443,4 +444,9 @@ func ProvideAutolinkStore(db *sqlx.DB) store.AutoLinkStore {
 
 func ProvideAITaskStore(db *sqlx.DB) store.AITaskStore {
 	return NewAITaskStore(db)
+}
+
+// ProvidePullReqLabelSuggestionStore provides a pull request label suggestion store.
+func ProvidePullReqLabelSuggestionStore(db *sqlx.DB) store.PullReqLabelSuggestionStore {
+	return NewPullReqLabelSuggestionStore(db)
 }

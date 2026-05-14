@@ -80,7 +80,7 @@ func (s *Service) AssignToPullReq(
 		return nil, fmt.Errorf("failed to find label by id: %w", err)
 	}
 
-	if err := s.checkPullreqLabelInScope(ctx, repoParentID, repoID, label); err != nil {
+	if err := s.checkLabelInScope(ctx, repoParentID, repoID, label); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +185,7 @@ func (s *Service) PreparePullReqLabel(
 		return WithValue{}, fmt.Errorf("failed to find label by id: %w", err)
 	}
 
-	if err := s.checkPullreqLabelInScope(ctx, repoParentID, repoID, label); err != nil {
+	if err := s.checkLabelInScope(ctx, repoParentID, repoID, label); err != nil {
 		return WithValue{}, err
 	}
 
@@ -278,7 +278,7 @@ func (s *Service) UnassignFromPullReq(
 		return nil, nil, fmt.Errorf("failed to find label by id: %w", err)
 	}
 
-	if err := s.checkPullreqLabelInScope(ctx, repoParentID, repoID, label); err != nil {
+	if err := s.checkLabelInScope(ctx, repoParentID, repoID, label); err != nil {
 		return nil, nil, err
 	}
 
@@ -468,7 +468,7 @@ func newPullReqLabel(
 	}
 }
 
-func (s *Service) checkPullreqLabelInScope(
+func (s *Service) checkLabelInScope(
 	ctx context.Context,
 	repoParentID, repoID int64,
 	label *types.Label,

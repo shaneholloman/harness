@@ -26,6 +26,8 @@ type Service struct {
 	labelStore                  store.LabelStore
 	labelValueStore             store.LabelValueStore
 	pullReqLabelAssignmentStore store.PullReqLabelAssignmentStore
+	pullreqLabelSuggestionStore store.PullReqLabelSuggestionStore
+	principalInfoCache          store.PrincipalInfoCache
 	spaceFinder                 refcache.SpaceFinder
 }
 
@@ -35,6 +37,8 @@ func New(
 	labelStore store.LabelStore,
 	labelValueStore store.LabelValueStore,
 	pullReqLabelAssignmentStore store.PullReqLabelAssignmentStore,
+	pullreqLabelSuggestionStore store.PullReqLabelSuggestionStore,
+	principalInfoCache store.PrincipalInfoCache,
 	spaceFinder refcache.SpaceFinder,
 ) *Service {
 	return &Service{
@@ -43,6 +47,8 @@ func New(
 		labelStore:                  labelStore,
 		labelValueStore:             labelValueStore,
 		pullReqLabelAssignmentStore: pullReqLabelAssignmentStore,
+		pullreqLabelSuggestionStore: pullreqLabelSuggestionStore,
+		principalInfoCache:          principalInfoCache,
 		spaceFinder:                 spaceFinder,
 	}
 }

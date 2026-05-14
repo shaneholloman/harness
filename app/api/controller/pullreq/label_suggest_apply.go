@@ -16,32 +16,30 @@ package pullreq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/harness/gitness/app/api/usererror"
 	"github.com/harness/gitness/app/auth"
 	events "github.com/harness/gitness/app/events/pullreq"
-	"github.com/harness/gitness/app/services/label"
+	gitness_store "github.com/harness/gitness/store"
 	"github.com/harness/gitness/types"
 	"github.com/harness/gitness/types/enum"
 
 	"github.com/rs/zerolog/log"
 )
 
-// AssignLabel assigns a label to a pull request .
-func (c *Controller) AssignLabel(
+// ApplySuggestedLabel applies a pending suggested label to a pull request and removes the suggestion entry.
+func (c *Controller) ApplySuggestedLabel(
 	ctx context.Context,
 	session *auth.Session,
 	repoRef string,
 	pullreqNum int64,
-	in *types.PullReqLabelAssignInput,
+	labelID int64,
 ) (*types.PullReqLabel, error) {
 	repo, err := c.getRepoCheckAccess(ctx, session, repoRef, enum.PermissionRepoReview)
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire access to target repo: %w", err)
-	}
-
-	if err := in.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate input: %w", err)
 	}
 
 	pullreq, err := c.pullreqStore.FindByNumber(ctx, repo.ID, pullreqNum)
@@ -49,22 +47,13 @@ func (c *Controller) AssignLabel(
 		return nil, fmt.Errorf("failed to find pullreq: %w", err)
 	}
 
-	var out *label.AssignToPullReqOut
-	err = c.tx.WithTx(ctx, func(ctx context.Context) error {
-		out, err = c.labelSvc.AssignToPullReq(
-			ctx, session.Principal.ID, pullreq.ID, repo.ID, repo.ParentID, in)
-		if err != nil {
-			return fmt.Errorf("failed to create pullreq label: %w", err)
-		}
-
-		if err = c.labelSuggestionStore.Delete(ctx, pullreq.ID, in.LabelID); err != nil {
-			return fmt.Errorf("failed to delete label suggestions: %w", err)
-		}
-
-		return nil
-	})
+	out, err := c.labelSvc.ApplySuggestion(
+		ctx, session.Principal.ID, pullreq.ID, repo.ID, repo.ParentID, labelID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gitness_store.ErrResourceNotFound) {
+			return nil, usererror.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to apply label suggestion: %w", err)
 	}
 
 	if out.ActivityType == enum.LabelActivityNoop {
@@ -85,10 +74,9 @@ func (c *Controller) AssignLabel(
 		return nil
 	}()
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("failed to write pull request activity after label assign")
+		log.Ctx(ctx).Err(err).Msg("failed to write pull request activity after applying label suggestion")
 	}
 
-	// if the label has no value, the newValueID will be nil
 	var newValueID *int64
 	if out.NewLabelValue != nil {
 		newValueID = &out.NewLabelValue.ID
@@ -107,33 +95,4 @@ func (c *Controller) AssignLabel(
 	})
 
 	return out.PullReqLabel, nil
-}
-
-func activityPayload(out *label.AssignToPullReqOut) *types.PullRequestActivityLabel {
-	var oldValue *string
-	var oldValueColor *enum.LabelColor
-	if out.OldLabelValue != nil {
-		oldValue = &out.OldLabelValue.Value
-		oldValueColor = &out.OldLabelValue.Color
-	}
-
-	var value *string
-	var valueColor *enum.LabelColor
-	if out.NewLabelValue != nil {
-		value = &out.NewLabelValue.Value
-		valueColor = &out.NewLabelValue.Color
-	}
-
-	return &types.PullRequestActivityLabel{
-		PullRequestActivityLabelBase: types.PullRequestActivityLabelBase{
-			Label:         out.Label.Key,
-			LabelColor:    out.Label.Color,
-			LabelScope:    out.Label.Scope,
-			Value:         value,
-			ValueColor:    valueColor,
-			OldValue:      oldValue,
-			OldValueColor: oldValueColor,
-		},
-		Type: out.ActivityType,
-	}
 }

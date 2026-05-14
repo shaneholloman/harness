@@ -753,6 +753,7 @@ func SetupPullReq(r chi.Router, pullreqCtrl *pullreq.Controller) {
 			})
 
 			setupPullReqLabels(r, pullreqCtrl)
+			setupPullReqSuggestions(r, pullreqCtrl)
 		})
 	})
 }
@@ -763,6 +764,19 @@ func setupPullReqLabels(r chi.Router, pullreqCtrl *pullreq.Controller) {
 		r.Get("/", handlerpullreq.HandleListLabels(pullreqCtrl))
 		r.Route(fmt.Sprintf("/{%s}", request.PathParamLabelID), func(r chi.Router) {
 			r.Delete("/", handlerpullreq.HandleUnassignLabel(pullreqCtrl))
+		})
+	})
+}
+
+func setupPullReqSuggestions(r chi.Router, pullreqCtrl *pullreq.Controller) {
+	r.Route("/suggestions", func(r chi.Router) {
+		r.Route("/labels", func(r chi.Router) {
+			r.Get("/", handlerpullreq.HandleListSuggestedLabels(pullreqCtrl))
+			r.Post("/batch", handlerpullreq.HandleSuggestLabels(pullreqCtrl))
+			r.Route(fmt.Sprintf("/{%s}", request.PathParamLabelID), func(r chi.Router) {
+				r.Delete("/", handlerpullreq.HandleRemoveSuggestedLabel(pullreqCtrl))
+				r.Post("/apply", handlerpullreq.HandleApplySuggestedLabel(pullreqCtrl))
+			})
 		})
 	})
 }

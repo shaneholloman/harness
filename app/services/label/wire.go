@@ -32,7 +32,12 @@ func ProvideLabel(
 	labelStore store.LabelStore,
 	labelValueStore store.LabelValueStore,
 	pullReqLabelStore store.PullReqLabelAssignmentStore,
+	pullreqLabelSuggestionStore store.PullReqLabelSuggestionStore,
+	principalInfoCache store.PrincipalInfoCache,
 	spaceFinder refcache.SpaceFinder,
 ) *Service {
-	return New(tx, spaceStore, labelStore, labelValueStore, pullReqLabelStore, spaceFinder)
+	return New(
+		tx, spaceStore, labelStore, labelValueStore, pullReqLabelStore,
+		pullreqLabelSuggestionStore, principalInfoCache, spaceFinder,
+	)
 }

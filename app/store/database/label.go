@@ -198,6 +198,72 @@ func (s *labelStore) FindByID(ctx context.Context, id int64) (*types.Label, erro
 	return mapLabel(&dst), nil
 }
 
+func (s *labelStore) FindByIDs(ctx context.Context, ids []int64) (map[int64]*types.Label, error) {
+	if len(ids) == 0 {
+		return make(map[int64]*types.Label), nil
+	}
+
+	stmt := database.Builder.Select(labelColumnsWithIDAndValueCount).
+		From("labels").
+		Where(squirrel.Eq{"label_id": ids})
+
+	sql, args, err := stmt.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to convert query to sql")
+	}
+
+	db := dbtx.GetAccessor(ctx, s.db)
+
+	var dst []*label
+	if err := db.SelectContext(ctx, &dst, sql, args...); err != nil {
+		return nil, database.ProcessSQLErrorf(ctx, err, "Failed to find labels")
+	}
+
+	result := make(map[int64]*types.Label, len(dst))
+	for _, l := range dst {
+		result[l.ID] = mapLabel(l)
+	}
+
+	return result, nil
+}
+
+func (s *labelStore) FindInfosByIDs(ctx context.Context, ids []int64) (map[int64]*types.LabelInfo, error) {
+	if len(ids) == 0 {
+		return make(map[int64]*types.LabelInfo), nil
+	}
+
+	stmt := database.Builder.
+		Select(`
+			 label_id
+			,label_space_id
+			,label_repo_id
+			,label_scope
+			,label_key
+			,label_type
+			,label_color`).
+		From("labels").
+		Where(squirrel.Eq{"label_id": ids})
+
+	sql, args, err := stmt.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to convert query to sql")
+	}
+
+	db := dbtx.GetAccessor(ctx, s.db)
+
+	var dst []*labelInfo
+	if err := db.SelectContext(ctx, &dst, sql, args...); err != nil {
+		return nil, database.ProcessSQLErrorf(ctx, err, "Failed to find label infos")
+	}
+
+	result := make(map[int64]*types.LabelInfo, len(dst))
+	for _, l := range dst {
+		result[l.LabelID] = mapLabelInfo(l)
+	}
+
+	return result, nil
+}
+
 func (s *labelStore) Delete(ctx context.Context, spaceID, repoID *int64, name string) error {
 	const sqlQuery = `
 		DELETE FROM labels

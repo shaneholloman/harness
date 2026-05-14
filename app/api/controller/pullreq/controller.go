@@ -91,6 +91,9 @@ type Controller struct {
 	settings               *settings.Service
 	importer               *migrate.PullReq
 	labelSvc               *label.Service
+	labelStore             store.LabelStore
+	labelValueStore        store.LabelValueStore
+	labelSuggestionStore   store.PullReqLabelSuggestionStore
 	instrumentation        instrument.Service
 	userGroupService       usergroup.Service
 	branchStore            store.BranchStore
@@ -136,6 +139,9 @@ func NewController(
 	settings *settings.Service,
 	importer *migrate.PullReq,
 	labelSvc *label.Service,
+	labelStore store.LabelStore,
+	labelValueStore store.LabelValueStore,
+	labelSuggestionStore store.PullReqLabelSuggestionStore,
 	instrumentation instrument.Service,
 	userGroupService usergroup.Service,
 	branchStore store.BranchStore,
@@ -180,6 +186,9 @@ func NewController(
 		settings:               settings,
 		importer:               importer,
 		labelSvc:               labelSvc,
+		labelStore:             labelStore,
+		labelValueStore:        labelValueStore,
+		labelSuggestionStore:   labelSuggestionStore,
 		instrumentation:        instrumentation,
 		userGroupService:       userGroupService,
 		branchStore:            branchStore,
