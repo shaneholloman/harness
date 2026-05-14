@@ -17,6 +17,7 @@ package pullreq
 import (
 	"github.com/harness/gitness/app/auth/authz"
 	pullreqevents "github.com/harness/gitness/app/events/pullreq"
+	"github.com/harness/gitness/app/services/automerge"
 	"github.com/harness/gitness/app/services/codecomments"
 	"github.com/harness/gitness/app/services/codeowners"
 	"github.com/harness/gitness/app/services/dotrange"
@@ -76,6 +77,7 @@ func ProvideController(
 	pullreqService *pullreq.Service,
 	pullreqListService *pullreq.ListService,
 	mergeService *merge.Service,
+	autoMergeService *automerge.Service,
 	ruleManager *protection.Manager,
 	sseStreamer sse.Streamer,
 	dotRangeService *dotrange.Service,
@@ -118,6 +120,7 @@ func ProvideController(
 		pullreqService,
 		pullreqListService,
 		mergeService,
+		autoMergeService,
 		ruleManager,
 		sseStreamer,
 		dotRangeService,

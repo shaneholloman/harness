@@ -313,7 +313,7 @@ func (s *Service) deleteBranch(
 		return false, nil
 	}
 
-	sourceWriteParams, err := s.createRPCWriteParams(ctx, mergedBy, *pr.SourceRepoID)
+	sourceWriteParams, err := s.CreateRPCWriteParams(ctx, mergedBy, *pr.SourceRepoID)
 	if err != nil {
 		return false, fmt.Errorf("failed to create write params to delete branch: %w", err)
 	}
@@ -329,7 +329,7 @@ func (s *Service) deleteBranch(
 	return true, nil
 }
 
-func (s *Service) createRPCWriteParams(
+func (s *Service) CreateRPCWriteParams(
 	ctx context.Context,
 	principal *types.PrincipalInfo,
 	repoID int64,

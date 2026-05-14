@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merge
+package automerge
 
 import (
+	"context"
+
+	checkevents "github.com/harness/gitness/app/events/check"
 	pullreqevents "github.com/harness/gitness/app/events/pullreq"
-	"github.com/harness/gitness/app/services/codeowners"
-	"github.com/harness/gitness/app/services/instrument"
+	"github.com/harness/gitness/app/services/locker"
+	"github.com/harness/gitness/app/services/merge"
+	"github.com/harness/gitness/app/services/protection"
 	"github.com/harness/gitness/app/services/refcache"
-	"github.com/harness/gitness/app/services/usergroup"
 	"github.com/harness/gitness/app/sse"
 	"github.com/harness/gitness/app/store"
-	"github.com/harness/gitness/app/url"
+	"github.com/harness/gitness/events"
 	"github.com/harness/gitness/git"
+	"github.com/harness/gitness/store/database/dbtx"
+	"github.com/harness/gitness/types"
 
 	"github.com/google/wire"
 )
@@ -34,33 +39,37 @@ var WireSet = wire.NewSet(
 )
 
 func ProvideService(
+	ctx context.Context,
+	config *types.Config,
 	git git.Interface,
-	eventReporter *pullreqevents.Reporter,
+	tx dbtx.Transactor,
+	mergeService *merge.Service,
+	statusCheckFactory *events.ReaderFactory[*checkevents.Reader],
+	pullreqEvReaderFactory *events.ReaderFactory[*pullreqevents.Reader],
 	repoFinder refcache.RepoFinder,
 	pullreqStore store.PullReqStore,
 	activityStore store.PullReqActivityStore,
-	checkStore store.CheckStore,
-	reviewerStore store.PullReqReviewerStore,
+	principalStore store.PrincipalStore,
 	autoMergeStore store.AutoMergeStore,
-	codeOwners *codeowners.Service,
-	userGroupService usergroup.Service,
-	urlProvider url.Provider,
+	protectionManager *protection.Manager,
 	sseStreamer sse.Streamer,
-	instrumentation instrument.Service,
-) *Service {
+	locker *locker.Locker,
+) (*Service, error) {
 	return NewService(
+		ctx,
+		config,
 		git,
-		eventReporter,
+		tx,
+		mergeService,
+		statusCheckFactory,
+		pullreqEvReaderFactory,
 		repoFinder,
 		pullreqStore,
 		activityStore,
-		checkStore,
-		reviewerStore,
+		principalStore,
 		autoMergeStore,
-		codeOwners,
-		userGroupService,
-		urlProvider,
+		protectionManager,
 		sseStreamer,
-		instrumentation,
+		locker,
 	)
 }

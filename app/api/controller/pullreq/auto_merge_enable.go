@@ -23,7 +23,7 @@ import (
 	"github.com/harness/gitness/app/api/controller"
 	"github.com/harness/gitness/app/api/usererror"
 	"github.com/harness/gitness/app/auth"
-	"github.com/harness/gitness/app/services/merge"
+	"github.com/harness/gitness/app/services/automerge"
 	"github.com/harness/gitness/app/services/settings"
 	"github.com/harness/gitness/errors"
 	"github.com/harness/gitness/types"
@@ -114,20 +114,20 @@ func (c *Controller) AutoMergeEnable(
 
 	// Try to merge the pull request right now.
 
-	prMerged, branchDeleted, err := c.mergeService.Merge(ctx, pr, types.AutoMergeInput{
+	prMerged, branchDeleted, err := c.autoMergeService.Merge(ctx, pr, types.AutoMergeInput{
 		Principal:    session.Principal,
 		MergeMethod:  autoMerge.MergeMethod,
 		Title:        autoMerge.Title,
 		Message:      autoMerge.Message,
 		DeleteBranch: autoMerge.DeleteBranch,
 	})
-	if errors.Is(err, merge.ErrMethodNotAllowed) {
+	if errors.Is(err, automerge.ErrMethodNotAllowed) {
 		return nil, usererror.BadRequest("The provided merge method is not allowed by the rules.")
 	}
 	if err != nil &&
-		!errors.Is(err, merge.ErrNotEligible) &&
-		!errors.Is(err, merge.ErrRuleViolation) &&
-		!errors.Is(err, merge.ErrConflict) {
+		!errors.Is(err, automerge.ErrNotEligible) &&
+		!errors.Is(err, automerge.ErrRuleViolation) &&
+		!errors.Is(err, automerge.ErrConflict) {
 		return nil, fmt.Errorf("failed to merge pull request %d: %w", pr.ID, err)
 	}
 

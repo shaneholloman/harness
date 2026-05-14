@@ -24,6 +24,7 @@ import (
 	"github.com/harness/gitness/app/auth"
 	"github.com/harness/gitness/app/auth/authz"
 	pullreqevents "github.com/harness/gitness/app/events/pullreq"
+	"github.com/harness/gitness/app/services/automerge"
 	"github.com/harness/gitness/app/services/codecomments"
 	"github.com/harness/gitness/app/services/codeowners"
 	"github.com/harness/gitness/app/services/dotrange"
@@ -81,6 +82,7 @@ type Controller struct {
 	pullreqService         *pullreq.Service
 	pullreqListService     *pullreq.ListService
 	mergeService           *merge.Service
+	autoMergeService       *automerge.Service
 	protectionManager      *protection.Manager
 	sseStreamer            sse.Streamer
 	dotRangeService        *dotrange.Service
@@ -125,6 +127,7 @@ func NewController(
 	pullreqService *pullreq.Service,
 	pullreqListService *pullreq.ListService,
 	mergeService *merge.Service,
+	autoMergeService *automerge.Service,
 	protectionManager *protection.Manager,
 	sseStreamer sse.Streamer,
 	dotRangeService *dotrange.Service,
@@ -169,6 +172,7 @@ func NewController(
 		pullreqListService:     pullreqListService,
 		protectionManager:      protectionManager,
 		mergeService:           mergeService,
+		autoMergeService:       autoMergeService,
 		sseStreamer:            sseStreamer,
 		dotRangeService:        dotRangeService,
 		codeOwners:             codeowners,

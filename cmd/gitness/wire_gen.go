@@ -79,6 +79,7 @@ import (
 	"github.com/harness/gitness/app/services"
 	"github.com/harness/gitness/app/services/aitaskevent"
 	"github.com/harness/gitness/app/services/autolink"
+	"github.com/harness/gitness/app/services/automerge"
 	"github.com/harness/gitness/app/services/branch"
 	"github.com/harness/gitness/app/services/cleanup"
 	"github.com/harness/gitness/app/services/codecomments"
@@ -396,16 +397,9 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	readerFactory2, err := events7.ProvideReaderFactory(eventsSystem)
-	if err != nil {
-		return nil, err
-	}
 	pullReqReviewerStore := database.ProvidePullReqReviewerStore(db, principalInfoCache)
 	autoMergeStore := database.ProvideAutoMergeStore(db)
-	mergeService, err := merge.ProvideService(ctx, config, gitInterface, transactor, reporter4, readerFactory, readerFactory2, repoFinder, repoStore, pullReqStore, pullReqActivityStore, checkStore, pullReqReviewerStore, principalInfoCache, principalStore, autoMergeStore, protectionManager, codeownersService, usergroupService, provider, streamer, pubSub, instrumentService, lockerLocker)
-	if err != nil {
-		return nil, err
-	}
+	mergeService := merge.ProvideService(gitInterface, reporter4, repoFinder, pullReqStore, pullReqActivityStore, checkStore, pullReqReviewerStore, autoMergeStore, codeownersService, usergroupService, provider, streamer, instrumentService)
 	mergequeueService, err := mergequeue.ProvideService(ctx, config, gitInterface, transactor, reporter3, readerFactory, eventsReaderFactory, repoFinder, repoStore, pullReqStore, pullReqActivityStore, checkStore, mergeQueueStore, mergeQueueEntryStore, protectionManager, mergeService, provider, lockerLocker, jobScheduler, executor)
 	if err != nil {
 		return nil, err
@@ -536,23 +530,31 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	userGroupReviewerStore := database.ProvideUserGroupReviewerStore(db, principalInfoCache, userGroupStore)
 	pullReqFileViewStore := database.ProvidePullReqFileViewStore(db)
 	migrator := codecomments.ProvideMigrator(gitInterface)
-	readerFactory3, err := events13.ProvideReaderFactory(eventsSystem)
+	readerFactory2, err := events13.ProvideReaderFactory(eventsSystem)
 	if err != nil {
 		return nil, err
 	}
-	pullreqService, err := pullreq.ProvideService(ctx, config, readerFactory3, readerFactory2, reporter4, gitInterface, repoFinder, repoStore, pullReqStore, pullReqActivityStore, principalInfoCache, codeCommentView, migrator, pullReqFileViewStore, pubSub, provider, streamer)
+	readerFactory3, err := events7.ProvideReaderFactory(eventsSystem)
+	if err != nil {
+		return nil, err
+	}
+	pullreqService, err := pullreq.ProvideService(ctx, config, readerFactory2, readerFactory3, reporter4, gitInterface, repoFinder, repoStore, pullReqStore, pullReqActivityStore, principalInfoCache, codeCommentView, migrator, pullReqFileViewStore, pubSub, provider, streamer)
+	if err != nil {
+		return nil, err
+	}
+	automergeService, err := automerge.ProvideService(ctx, config, gitInterface, transactor, mergeService, readerFactory, readerFactory3, repoFinder, pullReqStore, pullReqActivityStore, principalStore, autoMergeStore, protectionManager, streamer, lockerLocker)
 	if err != nil {
 		return nil, err
 	}
 	pullReq := migrate.ProvidePullReqImporter(provider, gitInterface, principalStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, labelStore, labelValueStore, pullReqLabelAssignmentStore, pullReqReviewerStore, pullReqReviewStore, repoFinder, transactor, mutexManager)
 	branchStore := database.ProvideBranchStore(db)
-	pullreqController := pullreq2.ProvideController(transactor, provider, authorizer, auditService, pullReqStore, pullReqActivityStore, codeCommentView, pullReqReviewStore, pullReqReviewerStore, repoStore, principalStore, userGroupStore, userGroupReviewerStore, principalInfoCache, pullReqFileViewStore, membershipStore, checkStore, autoMergeStore, mergeQueueStore, mergeQueueEntryStore, mergequeueService, gitInterface, repoFinder, reporter4, migrator, pullreqService, listService, mergeService, protectionManager, streamer, dotrangeService, codeownersService, lockerLocker, settingsService, pullReq, labelService, instrumentService, usergroupService, branchStore, usergroupResolver, signatureVerifyService)
+	pullreqController := pullreq2.ProvideController(transactor, provider, authorizer, auditService, pullReqStore, pullReqActivityStore, codeCommentView, pullReqReviewStore, pullReqReviewerStore, repoStore, principalStore, userGroupStore, userGroupReviewerStore, principalInfoCache, pullReqFileViewStore, membershipStore, checkStore, autoMergeStore, mergeQueueStore, mergeQueueEntryStore, mergequeueService, gitInterface, repoFinder, reporter4, migrator, pullreqService, listService, mergeService, automergeService, protectionManager, streamer, dotrangeService, codeownersService, lockerLocker, settingsService, pullReq, labelService, instrumentService, usergroupService, branchStore, usergroupResolver, signatureVerifyService)
 	webhookConfig := server.ProvideWebhookConfig(config)
 	webhookStore := database.ProvideWebhookStore(db)
 	webhookExecutionStore := database.ProvideWebhookExecutionStore(db)
 	urlProvider := webhook.ProvideURLProvider(ctx)
 	secretService := secret3.ProvideSecretService(secretStore, encrypter, spaceFinder)
-	service3, err := webhook.ProvideService(ctx, webhookConfig, transactor, readerFactory3, readerFactory2, eventsReaderFactory, webhookStore, webhookExecutionStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, provider, principalStore, gitInterface, encrypter, labelStore, urlProvider, labelValueStore, auditService, streamer, secretService, spacePathStore)
+	service3, err := webhook.ProvideService(ctx, webhookConfig, transactor, readerFactory2, readerFactory3, eventsReaderFactory, webhookStore, webhookExecutionStore, spaceStore, repoStore, pullReqStore, pullReqActivityStore, provider, principalStore, gitInterface, encrypter, labelStore, urlProvider, labelValueStore, auditService, streamer, secretService, spacePathStore)
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +750,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	}
 	poller := runner.ProvideExecutionPoller(runtimeRunner, client)
 	triggerConfig := server.ProvideTriggerConfig(config)
-	triggerService, err := trigger2.ProvideService(ctx, triggerConfig, triggerStore, commitService, pullReqStore, repoFinder, pipelineStore, triggererTriggerer, readerFactory3, readerFactory2)
+	triggerService, err := trigger2.ProvideService(ctx, triggerConfig, triggerStore, commitService, pullReqStore, repoFinder, pipelineStore, triggererTriggerer, readerFactory2, readerFactory3)
 	if err != nil {
 		return nil, err
 	}
@@ -764,7 +766,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	submitter, err := metric.ProvideSubmitter(ctx, config, values, principalStore, principalInfoCache, pullReqStore, ruleStore, readerFactory6, readerFactory5, readerFactory2, readerFactory7, publicaccessService, spaceFinder, repoFinder)
+	submitter, err := metric.ProvideSubmitter(ctx, config, values, principalStore, principalInfoCache, pullReqStore, ruleStore, readerFactory6, readerFactory5, readerFactory3, readerFactory7, publicaccessService, spaceFinder, repoFinder)
 	if err != nil {
 		return nil, err
 	}
@@ -788,12 +790,12 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	mailerMailer := mailer.ProvideMailClient(config)
 	notificationClient := notification.ProvideMailClient(mailerMailer)
 	notificationConfig := server.ProvideNotificationConfig(config)
-	notificationService, err := notification.ProvideNotificationService(ctx, notificationClient, notificationConfig, readerFactory2, pullReqStore, repoStore, principalInfoView, principalInfoCache, pullReqReviewerStore, pullReqActivityStore, spacePathStore, provider)
+	notificationService, err := notification.ProvideNotificationService(ctx, notificationClient, notificationConfig, readerFactory3, pullReqStore, repoStore, principalInfoView, principalInfoCache, pullReqReviewerStore, pullReqActivityStore, spacePathStore, provider)
 	if err != nil {
 		return nil, err
 	}
 	keywordsearchConfig := server.ProvideKeywordSearchConfig(config)
-	keywordsearchService, err := keywordsearch.ProvideService(ctx, keywordsearchConfig, readerFactory3, readerFactory5, repoStore, indexer)
+	keywordsearchService, err := keywordsearch.ProvideService(ctx, keywordsearchConfig, readerFactory2, readerFactory5, repoStore, indexer)
 	if err != nil {
 		return nil, err
 	}
@@ -841,7 +843,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 		return nil, err
 	}
 	gitspaceServices := services.ProvideGitspaceServices(gitspaceeventService, gitspacedeleteeventService, infraproviderService, gitspaceService, gitspaceinfraeventService, gitspaceoperationseventService, aitaskeventService)
-	consumer, err := instrument.ProvideGitConsumer(ctx, config, readerFactory3, repoStore, principalInfoCache, instrumentService)
+	consumer, err := instrument.ProvideGitConsumer(ctx, config, readerFactory2, repoStore, principalInfoCache, instrumentService)
 	if err != nil {
 		return nil, err
 	}
@@ -850,12 +852,12 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 		return nil, err
 	}
 	branchConfig := server.ProvideBranchConfig(config)
-	branchService, err := branch.ProvideService(ctx, branchConfig, branchStore, pullReqStore, readerFactory3, readerFactory2)
+	branchService, err := branch.ProvideService(ctx, branchConfig, branchStore, pullReqStore, readerFactory2, readerFactory3)
 	if err != nil {
 		return nil, err
 	}
 	repoactivityConfig := server.ProvideRepoActivityConfig(config)
-	repoactivityService, err := repoactivity.ProvideService(ctx, repoactivityConfig, repoActivityStore, readerFactory3)
+	repoactivityService, err := repoactivity.ProvideService(ctx, repoactivityConfig, repoActivityStore, readerFactory2)
 	if err != nil {
 		return nil, err
 	}
@@ -874,7 +876,7 @@ func initSystem(ctx context.Context, config *types.Config) (*server.System, erro
 	if err != nil {
 		return nil, err
 	}
-	languageAnalyzer, err := languageanalyzer.ProvideAnalyzer(ctx, config, readerFactory5, readerFactory3, transactor, repoStore, repoFinder, repoLangStore, gitInterface)
+	languageAnalyzer, err := languageanalyzer.ProvideAnalyzer(ctx, config, readerFactory5, readerFactory2, transactor, repoStore, repoFinder, repoLangStore, gitInterface)
 	if err != nil {
 		return nil, err
 	}

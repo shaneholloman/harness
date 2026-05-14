@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merge
+package automerge
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/harness/gitness/app/api/controller"
 	"github.com/harness/gitness/app/bootstrap"
+	"github.com/harness/gitness/app/services/merge"
 	"github.com/harness/gitness/errors"
 	"github.com/harness/gitness/events"
 	"github.com/harness/gitness/git"
@@ -39,9 +40,6 @@ var (
 	ErrConflict         = errors.New("conflict error")
 	ErrMethodNotAllowed = errors.New("merge method not allowed")
 )
-
-// Timeout is the max time we give a merge to succeed.
-const Timeout = 3 * time.Minute
 
 func (s *Service) autoMerge(ctx context.Context, pr *types.PullReq) error {
 	if !isEligibleForAutoMerge(pr) {
@@ -141,7 +139,7 @@ func (s *Service) Merge(
 
 	var sourceRepo *types.RepositoryCore
 
-	unlock, err := s.locker.LockPR(ctx, targetRepo.ID, 0, Timeout) // 0 means locking repo level for prs
+	unlock, err := s.locker.LockPR(ctx, targetRepo.ID, 0, merge.Timeout) // 0 means locking repo level for prs
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to lock repository for pull request merge: %w", err)
 	}
@@ -173,7 +171,7 @@ func (s *Service) Merge(
 		return nil, false, fmt.Errorf("failed to fetch protection rules for the repository: %w", err)
 	}
 
-	ruleOut, violations, err := s.CheckRules(ctx, protectionRules, CheckRulesInput{
+	ruleOut, violations, err := s.mergeService.CheckRules(ctx, protectionRules, merge.CheckRulesInput{
 		PullReq:          pr,
 		TargetRepo:       targetRepo,
 		SourceRepo:       sourceRepo,
@@ -202,7 +200,7 @@ func (s *Service) Merge(
 
 	targetSHA := targetBranch.Branch.SHA
 
-	mergeInput, err := s.PreparePullReqMergeInput(
+	mergeInput, err := s.mergeService.PreparePullReqMergeInput(
 		pr,
 		sourceRepo,
 		targetSHA,
@@ -215,7 +213,7 @@ func (s *Service) Merge(
 		return nil, false, fmt.Errorf("failed to prepare merge input: %w", err)
 	}
 
-	targetWriteParams, err := s.createRPCWriteParams(ctx, principalInfo, targetRepo.ID)
+	targetWriteParams, err := s.mergeService.CreateRPCWriteParams(ctx, principalInfo, targetRepo.ID)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to create RPC write params: %w", err)
 	}
@@ -242,7 +240,7 @@ func (s *Service) Merge(
 	}
 
 	// Update pull request in the database
-	pr, seqBranchDeleted, err := s.DatabaseUpdate(
+	pr, seqBranchDeleted, err := s.mergeService.DatabaseUpdate(
 		ctx,
 		pr,
 		input.MergeMethod,
@@ -258,11 +256,11 @@ func (s *Service) Merge(
 	// Try to delete the source branch and insert pull request activity for it.
 	var branchDeleted bool
 	if deleteSourceBranch {
-		branchDeleted = s.DeleteBranchTry(ctx, pr, principalInfo, seqBranchDeleted)
+		branchDeleted = s.mergeService.DeleteBranchTry(ctx, pr, principalInfo, seqBranchDeleted)
 	}
 
 	// Publish pull request merge events
-	s.Publish(
+	s.mergeService.Publish(
 		ctx,
 		pr,
 		targetRepo,
